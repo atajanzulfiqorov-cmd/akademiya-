@@ -1,0 +1,10 @@
+[
+  {
+    "id": "r1",
+    "courseId": "101",
+    "studentId": "3",
+    "rating": 5,
+    "comment": "Juda zo'r kurs ekan, tushunarli tushuntirilgan!",
+    "createdAt": "2026-07-28T10:30:00.000Z"
+  }
+]

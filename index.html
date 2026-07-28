@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LMS Platformasi</title>
+  <style>
+    body { font-family: sans-serif; background: #f4f6f8; margin: 0; padding: 20px; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    h2 { color: #333; margin-top: 0; }
+    input, select, button { padding: 10px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+    button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #0056b3; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .course-card { border: 1px solid #ddd; padding: 15px; border-radius: 5px; background: #fff; }
+    .badge { background: #28a745; color: white; padding: 3px 8px; border-radius: 3px; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🎓 LMS O'quv Platformasi</h1>
+
+  <div class="grid">
+    <!-- Auth Card -->
+    <div class="card">
+      <h2>🔑 Ro'yxatdan o'tish / Kirish</h2>
+      <input type="text" id="name" placeholder="Ismingiz (Ro'yxatdan o'tish uchun)">
+      <input type="email" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Parol">
+      <select id="role">
+        <option value="student">Student (O'quvchi)</option>
+        <option value="instructor">Instructor (O'qituvchi)</option>
+      </select>
+      <button onclick="register()">Ro'yxatdan o'tish</button>
+      <button onclick="login()" style="background:#28a745;">Tizimga kirish</button>
+      <p id="authStatus" style="font-weight: bold;"></p>
+    </div>
+
+    <!-- Instructor Card -->
+    <div class="card">
+      <h2>📚 Yangi Kurs Yaratish</h2>
+      <input type="text" id="courseTitle" placeholder="Kurs nomi">
+      <input type="text" id="courseDesc" placeholder="Tavsif">
+      <input type="number" id="coursePrice" placeholder="Narxi (so'm)">
+      <button onclick="createCourse()">Kursni Saqlash</button>
+    </div>
+  </div>
+
+  <!-- Courses List -->
+  <div class="card">
+    <h2>📖 Mavjud Kurslar Ro'yxati</h2>
+    <button onclick="fetchCourses()" style="width: auto; padding: 8px 15px;">🔄 Ro'yxatni yangilash</button>
+    <div id="coursesList" style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;"></div>
+  </div>
+</div>
+
+<script>
+  const API_URL = 'http://localhost:5000/api/v1';
+  let token = localStorage.getItem('token') || '';
+
+  // Auth Statusni tekshirish
+  if(token) {
+    document.getElementById('authStatus').innerText = "✅ Tizimga kirilgansiz!";
+    document.getElementById('authStatus').style.color = "green";
+  }
+
+  // 1. Ro'yxatdan o'tish
+  async function register() {
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const role = document.getElementById('role').value;
+
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password, role })
+    });
+    const data = await res.json();
+    alert(data.message || 'Muvaffaqiyatli!');
+  }
+
+  // 2. Login
+  async function login() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+
+    if (data.accessToken) {
+      token = data.accessToken;
+      localStorage.setItem('token', token);
+      document.getElementById('authStatus').innerText = "✅ Tizimga muvaffaqiyatli kirdingiz!";
+      document.getElementById('authStatus').style.color = "green";
+    } else {
+      alert(data.message || 'Xatolik yuz berdi');
+    }
+  }
+
+  // 3. Kurslarni yuklash
+  async function fetchCourses() {
+    const res = await fetch(`${API_URL}/courses`);
+    const courses = await res.json();
+
+    const container = document.getElementById('coursesList');
+    container.innerHTML = '';
+
+    courses.forEach(course => {
+      container.innerHTML += `
+        <div class="course-card">
+          <h3>${course.title} <span class="badge">${course.price} so'm</span></h3>
+          <p>${course.description}</p>
+          <small>Reyting: ⭐ ${course.averageRating}</small><br><br>
+          <button onclick="enroll('${course.id}')" style="background:#17a2b8;">Sotib olish</button>
+        </div>
+      `;
+    });
+  }
+
+  // 4. Yangi kurs yaratish
+  async function createCourse() {
+    const title = document.getElementById('courseTitle').value;
+    const description = document.getElementById('courseDesc').value;
+    const price = document.getElementById('coursePrice').value;
+
+    const res = await fetch(`${API_URL}/courses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ title, description, price })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      alert('Kurs yaratildi!');
+      fetchCourses();
+    } else {
+      alert(data.message || 'Ruxsat berilmadi! (Faqat O\'qituvchilar yarata oladi)');
+    }
+  }
+
+  // 5. Kursga a'zo bo'lish
+  async function enroll(courseId) {
+    const res = await fetch(`${API_URL}/courses/${courseId}/enroll`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const data = await res.json();
+    alert(data.message || 'Jarayon yakunlandi');
+  }
+
+  // Sahifa yuklanganda kurslarni olib kelish
+  fetchCourses();
+</script>
+
+</body>
+</html>
